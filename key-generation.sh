@@ -24,7 +24,11 @@ LENDING_OUTPUT=$(solana-keygen new -o lending.json);
 PROGRAM_ID=$(echo "$LENDING_OUTPUT" | grep "pubkey:" | cut -d ' ' -f 2);
 
 
-echo -e "${bold}\nResults:${normal}";
+echo -e "${bold}\n\nResults:\n${normal}";
 echo -e "${bold}Owner address:${normal} $MARKET_OWNER (owner.json)";
 echo -e "${bold}Program address:${normal} $PROGRAM_ID (lending.json)";
-echo -e "Modify static program ID in lib.rs before moving";
+
+export MARKET_OWNER
+export PROGRAM_ID
+
+echo -e "Modify static program ID in lib.rs before moving on";
