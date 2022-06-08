@@ -72,11 +72,11 @@ SOL_RESERVE_OUTPUT=$(spl-token-lending \
   --pyth-price        J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix \
   --verbose);
 
-SOL_RESERVE_ADDER=$(echo "$SOL_RESERVE_OUTPUT" | grep "reserve" | cut -d ' ' -f 3);
+SOL_RESERVE_ADDR=$(echo "$SOL_RESERVE_OUTPUT" | grep "reserve" | cut -d ' ' -f 3);
 SOL_RESERVE_COLLATERAL_MINT_ADDR=$(echo "$SOL_RESERVE_OUTPUT" | grep "Adding collateral mint" | cut -d ' ' -f 4);
 SOL_RESERVE_COLLATERAL_SUPPLY_ADDR=$(echo "$SOL_RESERVE_OUTPUT" | grep "Adding collateral supply" | cut -d ' ' -f 4);
-SOL_RESERVE_LIQUIDITY_ADDER=$(echo "$SOL_RESERVE_OUTPUT" | grep "Adding liquidity supply" | cut -d ' ' -f 4);
-SOL_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDER=$(echo "$SOL_RESERVE_OUTPUT" | grep "Adding liquidity fee receiver" | cut -d ' ' -f 5);
+SOL_RESERVE_LIQUIDITY_ADDR=$(echo "$SOL_RESERVE_OUTPUT" | grep "Adding liquidity supply" | cut -d ' ' -f 4);
+SOL_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR=$(echo "$SOL_RESERVE_OUTPUT" | grep "Adding liquidity fee receiver" | cut -d ' ' -f 5);
 
 
 echo -e "\nCreating USDC Reserve...\n";
@@ -102,11 +102,11 @@ USDC_RESERVE_OUTPUT=$(spl-token-lending \
   --pyth-price        5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7 \
   --verbose);
 
-USDC_RESERVE_ADDER=$(echo "$USDC_RESERVE_OUTPUT" | grep "reserve" | cut -d ' ' -f 3);
+USDC_RESERVE_ADDR=$(echo "$USDC_RESERVE_OUTPUT" | grep "reserve" | cut -d ' ' -f 3);
 USDC_RESERVE_COLLATERAL_MINT_ADDR=$(echo "$USDC_RESERVE_OUTPUT" | grep "Adding collateral mint" | cut -d ' ' -f 4);
 USDC_RESERVE_COLLATERAL_SUPPLY_ADDR=$(echo "$USDC_RESERVE_OUTPUT" | grep "Adding collateral supply" | cut -d ' ' -f 4);
-USDC_RESERVE_LIQUIDITY_ADDER=$(echo "$USDC_RESERVE_OUTPUT" | grep "Adding liquidity supply" | cut -d ' ' -f 4);
-USDC_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDER=$(echo "$USDC_RESERVE_OUTPUT" | grep "Adding liquidity fee receiver" | cut -d ' ' -f 5);
+USDC_RESERVE_LIQUIDITY_ADDR=$(echo "$USDC_RESERVE_OUTPUT" | grep "Adding liquidity supply" | cut -d ' ' -f 4);
+USDC_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR=$(echo "$USDC_RESERVE_OUTPUT" | grep "Adding liquidity fee receiver" | cut -d ' ' -f 5);
 
 
 echo -e "${bold}\n\nDeveployment Results\n${normal}";
@@ -119,19 +119,19 @@ echo -e ""
 echo -e "${bold}Wrapped SOL address${normal}: So11111111111111111111111111111111111111112";
 echo -e "${bold}Decimals:${normal} 9"
 echo -e "${bold}Source address:${normal} $SOURCE";
-echo -e "${bold}Reserve address:${normal} $SOL_RESERVE_ADDER";
+echo -e "${bold}Reserve address:${normal} $SOL_RESERVE_ADDR";
 echo -e "${bold}Collateral mint address:${normal} $SOL_RESERVE_COLLATERAL_MINT_ADDR";
 echo -e "${bold}Collateral supply address:${normal} $SOL_RESERVE_COLLATERAL_SUPPLY_ADDR";
-echo -e "${bold}Liquidity address:${normal} $SOL_RESERVE_LIQUIDITY_ADDER";
-echo -e "${bold}Liquidity fee receiver address:${normal} $SOL_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDER";
+echo -e "${bold}Liquidity address:${normal} $SOL_RESERVE_LIQUIDITY_ADDR";
+echo -e "${bold}Liquidity fee receiver address:${normal} $SOL_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR";
 echo -e ""
 
 echo -e "${bold}USDC address:${normal} $USDC_ADDR";
 echo -e "${bold}Decimals:${normal} 6"
 echo -e "${bold}Source address:${normal} $USDC_TOKEN_ACC";
-echo -e "${bold}Reserve address:${normal} $USDC_RESERVE_ADDER";
+echo -e "${bold}Reserve address:${normal} $USDC_RESERVE_ADDR";
 echo -e "${bold}Collateral mint address:${normal} $USDC_RESERVE_COLLATERAL_MINT_ADDR";
 echo -e "${bold}Collateral supply address:${normal} $USDC_RESERVE_COLLATERAL_SUPPLY_ADDR";
-echo -e "${bold}Liquidity address:${normal} $USDC_RESERVE_LIQUIDITY_ADDER";
+echo -e "${bold}Liquidity address:${normal} $USDC_RESERVE_LIQUIDITY_ADDR";
 echo -e "${bold}Liquidity fee receiver address:${normal} $USDC_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR";
 echo -e ""

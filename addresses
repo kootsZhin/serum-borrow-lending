@@ -1,0 +1,24 @@
+Deveployment Results
+
+Network: https://api.devnet.solana.com
+Owner address: 6bAzbTVjkScF8YmLv9RoRTpearffbET2E5XtAhHukbKA (owner.json)
+Program address: 5q9VH9fg5o7cyL8WSpbLoHzqYhjqtrhTqACxraEFEu8B (lending.json)
+Lending market address: 7eHMwXGDvBe1RGq71FFt4ZSutP4pehebDdeaKjDPmjU7
+
+Wrapped SOL address: So11111111111111111111111111111111111111112
+Decimals: 9
+Source address: 2tCFQfLru6gjjUViNktvrxMhX6bXGFyWCAzMc5nFqupE
+Reserve address: 37tyq8o8ffLHx5kHijDa1EuGKVVoLZfEZFA4BUphY5fH
+Collateral mint address: 5XQLpteTaVKhUtAiWXZazgHhrbdCbZDMFSvvjJigjDsV
+Collateral supply address: 5ssvPnXe2m9nWbCpPV4i8Tf4XwuNKprU5waTU2qntKF3
+Liquidity address: 6pqjqHVKTUgctMLe1GKwxMMoPqqfu2s1LbhsWcJwyHCi
+Liquidity fee receiver address: Es2H7J5DANMZxCT9gi4Y8SDXHJwLm4pACbRNvRnNKvXV
+
+USDC address: iF81MK5Kk9uC9C2pmC6P4SprZiNcTrX1uhMZ9q8RAoa
+Decimals: 6
+Source address: 41rKv1haRbCEvaWqeFgBbL348CPxF5vhffVDH2JjtvZ9
+Reserve address: FwN7XP24MQdMvigNXnRBpkPRwcxrcfZNqtykLpP5dsMZ
+Collateral mint address: FK26DnuEUCg9mmyuYhQc7nHwjtAsqzaww2h9uofa3b1B
+Collateral supply address: EMy4LLW6ARK9Vk8ajJNpLQigjTAPbjcNYJMmfXRwrtkw
+Liquidity address: 79pipinkTHbftgq3MwaGEnTDMdJvcW2YLwnEXfXs6Pwf
+Liquidity fee receiver address: 9mrswtTEYL7AbWUKTYvmooy1SEHdBRP46NRZKumRBjoC
