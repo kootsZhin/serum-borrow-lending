@@ -110,28 +110,28 @@ USDC_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR=$(echo "$USDC_RESERVE_OUTPUT" | grep "A
 
 
 echo -e "${bold}\n\nDeveployment Results\n${normal}";
-echo -e "${bold}Network:${normal} $NETWORK";
-echo -e "${bold}Owner address:${normal} $MARKET_OWNER ($OWNER)"
-echo -e "${bold}Program address:${normal} $PROGRAM_ID ($PROGRAM)"
-echo -e "${bold}Lending market address:${normal} $MARKET_ADDR";
+echo -e "${bold}NETWORK=${normal}$NETWORK";
+echo -e "${bold}MARKET_OWNER=${normal}$MARKET_OWNER";
+echo -e "${bold}PROGRAM_ID=${normal}$PROGRAM_ID";
+echo -e "${bold}MARKET_ADDR=${normal}$MARKET_ADDR";
 echo -e ""
 
-echo -e "${bold}Wrapped SOL address${normal}: So11111111111111111111111111111111111111112";
-echo -e "${bold}Decimals:${normal} 9"
-echo -e "${bold}Source address:${normal} $SOURCE";
-echo -e "${bold}Reserve address:${normal} $SOL_RESERVE_ADDR";
-echo -e "${bold}Collateral mint address:${normal} $SOL_RESERVE_COLLATERAL_MINT_ADDR";
-echo -e "${bold}Collateral supply address:${normal} $SOL_RESERVE_COLLATERAL_SUPPLY_ADDR";
-echo -e "${bold}Liquidity address:${normal} $SOL_RESERVE_LIQUIDITY_ADDR";
-echo -e "${bold}Liquidity fee receiver address:${normal} $SOL_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR";
+echo -e "${bold}WRAPPED_SOL_ADDR=${normal}So11111111111111111111111111111111111111112";
+echo -e "${bold}WRAPPED_SOL_DECIMAL=${normal}9"
+echo -e "${bold}WRAPPED_SOL_SOURCE_ADDR=${normal}$SOURCE";
+echo -e "${bold}WRAPPED_SOL_RESERVE_ADDR=${normal}$SOL_RESERVE_ADDR";
+echo -e "${bold}WRAPPED_SOL_COLLATERAL_MINT_ADDR=${normal}$SOL_RESERVE_COLLATERAL_MINT_ADDR";
+echo -e "${bold}WRAPPED_SOL_COLLATERAL_SUPPLY_ADDR=${normal}$SOL_RESERVE_COLLATERAL_SUPPLY_ADDR";
+echo -e "${bold}WRAPPED_SOL_RESERVE_LIQUIDITY_ADDR=${normal}$SOL_RESERVE_LIQUIDITY_ADDR";
+echo -e "${bold}WRAPPED_SOL_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR=${normal}$SOL_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR";
 echo -e ""
 
-echo -e "${bold}USDC address:${normal} $USDC_ADDR";
-echo -e "${bold}Decimals:${normal} 6"
-echo -e "${bold}Source address:${normal} $USDC_TOKEN_ACC";
-echo -e "${bold}Reserve address:${normal} $USDC_RESERVE_ADDR";
-echo -e "${bold}Collateral mint address:${normal} $USDC_RESERVE_COLLATERAL_MINT_ADDR";
-echo -e "${bold}Collateral supply address:${normal} $USDC_RESERVE_COLLATERAL_SUPPLY_ADDR";
-echo -e "${bold}Liquidity address:${normal} $USDC_RESERVE_LIQUIDITY_ADDR";
-echo -e "${bold}Liquidity fee receiver address:${normal} $USDC_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR";
+echo -e "${bold}USDC_ADDR=${normal}$USDC_ADDR";
+echo -e "${bold}USDC_DECIMAL=${normal}6"
+echo -e "${bold}USDC_SOURCE_ADDR=${normal}$USDC_TOKEN_ACC";
+echo -e "${bold}USDC_RESERVE_ADDR=${normal}$USDC_RESERVE_ADDR";
+echo -e "${bold}USDC_COLLATERAL_MINT_ADDR=${normal}$USDC_RESERVE_COLLATERAL_MINT_ADDR";
+echo -e "${bold}USDC_COLLATERAL_SUPPLY_ADDR=${normal}$USDC_RESERVE_COLLATERAL_SUPPLY_ADDR";
+echo -e "${bold}USDC_RESERVE_LIQUIDITY_ADDR=${normal}$USDC_RESERVE_LIQUIDITY_ADDR";
+echo -e "${bold}USDC_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR=${normal}$USDC_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR";
 echo -e ""
