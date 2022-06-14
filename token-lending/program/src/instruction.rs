@@ -308,6 +308,23 @@ pub enum LendingInstruction {
         /// The amount that is to be borrowed - u64::MAX for up to 100% of available liquidity
         amount: u64,
     },
+
+    // 14
+    /// Updates a reserves config and a reserve price oracle pubkeys
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   1. `[writable]` Reserve account - refreshed
+    ///   2 `[]` Lending market account.
+    ///   3 `[]` Derived lending market authority.
+    ///   4 `[signer]` Lending market owner.
+    ///   5 `[]` Pyth product key.
+    ///   6 `[]` Pyth price key.
+    ///   7 `[]` Switchboard key.
+    UpdateReserveConfig {
+        /// Reserve config to update to
+        config: ReserveConfig,
+    },
 }
 
 impl LendingInstruction {
@@ -393,6 +410,34 @@ impl LendingInstruction {
             13 => {
                 let (amount, _rest) = Self::unpack_u64(rest)?;
                 Self::FlashLoan { amount }
+            }
+            14 => {
+                let (optimal_utilization_rate, rest) = Self::unpack_u8(rest)?;
+                let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
+                let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
+                let (liquidation_threshold, rest) = Self::unpack_u8(rest)?;
+                let (min_borrow_rate, rest) = Self::unpack_u8(rest)?;
+                let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
+                let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
+                let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
+                let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
+                let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
+                Self::UpdateReserveConfig {
+                    config: ReserveConfig {
+                        optimal_utilization_rate,
+                        loan_to_value_ratio,
+                        liquidation_bonus,
+                        liquidation_threshold,
+                        min_borrow_rate,
+                        optimal_borrow_rate,
+                        max_borrow_rate,
+                        fees: ReserveFees {
+                            borrow_fee_wad,
+                            flash_loan_fee_wad,
+                            host_fee_percentage,
+                        },
+                    },
+                }
             }
             _ => {
                 msg!("Instruction cannot be unpacked");
@@ -541,6 +586,36 @@ impl LendingInstruction {
             Self::FlashLoan { amount } => {
                 buf.push(13);
                 buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::UpdateReserveConfig {
+                config:
+                    ReserveConfig {
+                        optimal_utilization_rate,
+                        loan_to_value_ratio,
+                        liquidation_bonus,
+                        liquidation_threshold,
+                        min_borrow_rate,
+                        optimal_borrow_rate,
+                        max_borrow_rate,
+                        fees:
+                            ReserveFees {
+                                borrow_fee_wad,
+                                flash_loan_fee_wad,
+                                host_fee_percentage,
+                            },
+                    },
+            } => {
+                buf.push(2);
+                buf.extend_from_slice(&optimal_utilization_rate.to_le_bytes());
+                buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
+                buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
+                buf.extend_from_slice(&liquidation_threshold.to_le_bytes());
+                buf.extend_from_slice(&min_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&flash_loan_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
             }
         }
         buf
@@ -979,6 +1054,36 @@ pub fn flash_loan(
         program_id,
         accounts,
         data: LendingInstruction::FlashLoan { amount }.pack(),
+    }
+}
+
+/// Creates an 'UpdateReserveConfig' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn update_reserve_config(
+    program_id: Pubkey,
+    config: ReserveConfig,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner_pubkey: Pubkey,
+    pyth_product_pubkey: Pubkey,
+    pyth_price_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    let accounts = vec![
+        AccountMeta::new(reserve_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(lending_market_owner_pubkey, true),
+        AccountMeta::new_readonly(pyth_product_pubkey, false),
+        AccountMeta::new_readonly(pyth_price_pubkey, false),
+    ];
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::UpdateReserveConfig { config }.pack(),
     }
 }
 

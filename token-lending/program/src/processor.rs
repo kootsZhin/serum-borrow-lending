@@ -99,6 +99,10 @@ pub fn process_instruction(
             msg!("Instruction: Flash Loan");
             process_flash_loan(program_id, amount, accounts)
         }
+        LendingInstruction::UpdateReserveConfig { config } => {
+            msg!("Instruction: Update Reserve Config");
+            process_update_reserve_config(program_id, config, accounts)
+        }
     }
 }
 
@@ -169,48 +173,7 @@ fn process_init_reserve(
     config: ReserveConfig,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
-    if liquidity_amount == 0 {
-        msg!("Reserve must be initialized with liquidity");
-        return Err(LendingError::InvalidAmount.into());
-    }
-    if config.optimal_utilization_rate > 100 {
-        msg!("Optimal utilization rate must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.loan_to_value_ratio >= 100 {
-        msg!("Loan to value ratio must be in range [0, 100)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.liquidation_bonus > 100 {
-        msg!("Liquidation bonus must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.liquidation_threshold <= config.loan_to_value_ratio
-        || config.liquidation_threshold > 100
-    {
-        msg!("Liquidation threshold must be in range (LTV, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.optimal_borrow_rate < config.min_borrow_rate {
-        msg!("Optimal borrow rate must be >= min borrow rate");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.optimal_borrow_rate > config.max_borrow_rate {
-        msg!("Optimal borrow rate must be <= max borrow rate");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.borrow_fee_wad >= WAD {
-        msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.flash_loan_fee_wad >= WAD {
-        msg!("Flash loan fee must be in range [0, 1_000_000_000_000_000_000)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.host_fee_percentage > 100 {
-        msg!("Host fee percentage must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
+    validate_reserve_config(config)?;
 
     let account_info_iter = &mut accounts.iter().peekable();
     let source_liquidity_info = next_account_info(account_info_iter)?;
@@ -262,46 +225,7 @@ fn process_init_reserve(
         return Err(LendingError::InvalidSigner.into());
     }
 
-    if &lending_market.oracle_program_id != pyth_product_info.owner {
-        msg!("Pyth product account provided is not owned by the lending market oracle program");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-    if &lending_market.oracle_program_id != pyth_price_info.owner {
-        msg!("Pyth price account provided is not owned by the lending market oracle program");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    let pyth_product_data = pyth_product_info.try_borrow_data()?;
-    let pyth_product = pyth::load::<pyth::Product>(&pyth_product_data)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    if pyth_product.magic != pyth::MAGIC {
-        msg!("Pyth product account provided is not a valid Pyth account");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-    if pyth_product.ver != pyth::VERSION_2 {
-        msg!("Pyth product account provided has a different version than expected");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-    if pyth_product.atype != pyth::AccountType::Product as u32 {
-        msg!("Pyth product account provided is not a valid Pyth product account");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    let pyth_price_pubkey_bytes: &[u8; 32] = pyth_price_info
-        .key
-        .as_ref()
-        .try_into()
-        .map_err(|_| LendingError::InvalidAccountInput)?;
-    if &pyth_product.px_acc.val != pyth_price_pubkey_bytes {
-        msg!("Pyth product price account does not match the Pyth price provided");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    let quote_currency = get_pyth_product_quote_currency(pyth_product)?;
-    if lending_market.quote_currency != quote_currency {
-        msg!("Lending market quote currency does not match the oracle quote currency");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
+    validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
 
     let market_price = get_pyth_price(pyth_price_info, clock)?;
 
@@ -1695,6 +1619,171 @@ fn process_flash_loan(
         })?;
     }
 
+    Ok(())
+}
+
+#[inline(never)] // avoid stack frame limit
+fn process_update_reserve_config(
+    program_id: &Pubkey,
+    config: ReserveConfig,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    validate_reserve_config(config)?;
+
+    let account_info_iter = &mut accounts.iter();
+    let reserve_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let lending_market_owner_info = next_account_info(account_info_iter)?;
+    let pyth_product_info = next_account_info(account_info_iter)?;
+    let pyth_price_info = next_account_info(account_info_iter)?;
+
+    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if reserve_info.owner != program_id {
+        msg!(
+            "Reserve provided is not owned by the lending program {} != {}",
+            &reserve_info.owner.to_string(),
+            &program_id.to_string(),
+        );
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &reserve.lending_market != lending_market_info.key {
+        msg!("Reserve lending market does not match the lending market provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        msg!(
+            "Lending market provided is not owned by the lending program  {} != {}",
+            &lending_market_info.owner.to_string(),
+            &program_id.to_string(),
+        );
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.owner != lending_market_owner_info.key {
+        msg!("Lending market owner does not match the lending market owner provided");
+        return Err(LendingError::InvalidMarketOwner.into());
+    }
+    if !lending_market_owner_info.is_signer {
+        msg!("Lending market owner provided must be a signer");
+        return Err(LendingError::InvalidSigner.into());
+    }
+
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    if *pyth_price_info.key != reserve.liquidity.oracle_pubkey {
+        validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
+        reserve.liquidity.oracle_pubkey = *pyth_price_info.key;
+    }
+
+    reserve.config = config;
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+    Ok(())
+}
+
+/// validate reserve configs
+# [inline(always)]
+fn validate_reserve_config(config: ReserveConfig) -> ProgramResult {
+    if config.optimal_utilization_rate > 100 {
+        msg!("Optimal utilization rate must be in range [0, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.loan_to_value_ratio >= 100 {
+        msg!("Loan to value ratio must be in range [0, 100)");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.liquidation_bonus > 100 {
+        msg!("Liquidation bonus must be in range [0, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.liquidation_threshold <= config.loan_to_value_ratio
+        || config.liquidation_threshold > 100
+    {
+        msg!("Liquidation threshold must be in range (LTV, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.optimal_borrow_rate < config.min_borrow_rate {
+        msg!("Optimal borrow rate must be >= min borrow rate");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.optimal_borrow_rate > config.max_borrow_rate {
+        msg!("Optimal borrow rate must be <= max borrow rate");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.fees.borrow_fee_wad >= WAD {
+        msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.fees.flash_loan_fee_wad >= WAD {
+        msg!("Flash loan fee must be in range [0, 1_000_000_000_000_000_000)");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.fees.host_fee_percentage > 100 {
+        msg!("Host fee percentage must be in range [0, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    Ok(())
+}
+
+/// validates pyth AccountInfos
+#[inline(always)]
+fn validate_pyth_keys(
+    lending_market: &LendingMarket,
+    pyth_product_info: &AccountInfo,
+    pyth_price_info: &AccountInfo,
+) -> ProgramResult {
+    if &lending_market.oracle_program_id != pyth_product_info.owner {
+        msg!("Pyth product account provided is not owned by the lending market oracle program");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    if &lending_market.oracle_program_id != pyth_price_info.owner {
+        msg!("Pyth price account provided is not owned by the lending market oracle program");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
+    let pyth_product_data = pyth_product_info.try_borrow_data()?;
+    let pyth_product = pyth::load::<pyth::Product>(&pyth_product_data)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    if pyth_product.magic != pyth::MAGIC {
+        msg!("Pyth product account provided is not a valid Pyth account");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    if pyth_product.ver != pyth::VERSION_2 {
+        msg!("Pyth product account provided has a different version than expected");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    if pyth_product.atype != pyth::AccountType::Product as u32 {
+        msg!("Pyth product account provided is not a valid Pyth product account");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
+    let pyth_price_pubkey_bytes: &[u8; 32] = pyth_price_info
+        .key
+        .as_ref()
+        .try_into()
+        .map_err(|_| LendingError::InvalidAccountInput)?;
+    if &pyth_product.px_acc.val != pyth_price_pubkey_bytes {
+        msg!("Pyth product price account does not match the Pyth price provided");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
+    let quote_currency = get_pyth_product_quote_currency(pyth_product)?;
+    if lending_market.quote_currency != quote_currency {
+        msg!("Lending market quote currency does not match the oracle quote currency");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
     Ok(())
 }
 
