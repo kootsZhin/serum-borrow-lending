@@ -605,7 +605,7 @@ impl LendingInstruction {
                             },
                     },
             } => {
-                buf.push(2);
+                buf.push(14);
                 buf.extend_from_slice(&optimal_utilization_rate.to_le_bytes());
                 buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
                 buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
