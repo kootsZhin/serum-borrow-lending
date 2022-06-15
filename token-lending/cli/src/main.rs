@@ -1046,7 +1046,8 @@ fn command_update_reserve(
         new_pyth_product_pubkey = pyth_product_pubkey.unwrap();
     }
     
-    let mut transaction = Transaction::new_with_payer(
+    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    let message = Message::new_with_blockhash(
         &[update_reserve_config(
             config.lending_program_id,
             reserve.config,
@@ -1057,13 +1058,17 @@ fn command_update_reserve(
             reserve.liquidity.oracle_pubkey,
         )],
         Some(&config.fee_payer.pubkey()),
+        &recent_blockhash,
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
+    check_fee_payer_balance(
+        config,
+        config.rpc_client.get_fee_for_message(&message)?,
+    )?;
 
-    transaction.sign(
+    let transaction = Transaction::new(
         &vec![config.fee_payer.as_ref(), &lending_market_owner_keypair],
+        message,
         recent_blockhash,
     );
     send_transaction(config, transaction)?;
