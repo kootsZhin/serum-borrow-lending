@@ -25,7 +25,7 @@ use {
     },
     spl_token_lending::{
         self,
-        instruction::{init_lending_market, init_reserve},
+        instruction::{init_lending_market, init_reserve, update_reserve_config},
         math::WAD,
         state::{LendingMarket, Reserve, ReserveConfig, ReserveFees},
     },
@@ -40,6 +40,43 @@ struct Config {
     verbose: bool,
     dry_run: bool,
 }
+
+/// Reserve config with optional fields
+struct PartialReserveConfig {
+    /// Optimal utilization rate, as a percentage
+    pub optimal_utilization_rate: Option<u8>,
+    /// Target ratio of the value of borrows to deposits, as a percentage
+    /// 0 if use as collateral is disabled
+    pub loan_to_value_ratio: Option<u8>,
+    /// Bonus a liquidator gets when repaying part of an unhealthy obligation, as a percentage
+    pub liquidation_bonus: Option<u8>,
+    /// Loan to value ratio at which an obligation can be liquidated, as a percentage
+    pub liquidation_threshold: Option<u8>,
+    /// Min borrow APY
+    pub min_borrow_rate: Option<u8>,
+    /// Optimal (utilization) borrow APY
+    pub optimal_borrow_rate: Option<u8>,
+    /// Max borrow APY
+    pub max_borrow_rate: Option<u8>,
+    /// Program owner fees assessed, separate from gains due to interest accrual
+    pub fees: PartialReserveFees,
+}
+
+/// Reserve Fees with optional fields
+struct PartialReserveFees {
+    pub borrow_fee_wad: Option<u64>,
+    /// Fee for flash loan, expressed as a Wad.
+    /// 0.3% (Aave flash loan fee) = 3_000_000_000_000_000
+    pub flash_loan_fee_wad: Option<u64>,
+    /// Amount of fee going to host account, if provided in liquidate and repay
+    pub host_fee_percentage: Option<u8>,
+}
+
+pub const NULL_PUBKEY: solana_program::pubkey::Pubkey =
+    solana_program::pubkey::Pubkey::new_from_array([
+        11, 193, 238, 216, 208, 116, 241, 195, 55, 212, 76, 22, 75, 202, 40, 216, 76, 206, 27, 169,
+        138, 64, 177, 28, 19, 90, 156, 0, 0, 0, 0, 0,
+    ]);
 
 type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<(), Error>;
@@ -308,11 +345,162 @@ fn main() {
                         .default_value("20")
                         .help("Amount of fee going to host account: [0, 100]"),
                 )
+            
+        )
+        .subcommand(
+            SubCommand::with_name("update-reserve")
+                .about("Update a reserve config of a lending market")
+                .arg(
+                    Arg::with_name("reserve")
+                        .long("reserve")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Reserve address"),
+                )
+                // @TODO: use is_valid_signer
+                .arg(
+                    Arg::with_name("lending_market_owner")
+                        .long("market-owner")
+                        .validator(is_keypair)
+                        .value_name("KEYPAIR")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Owner of the lending market"),
+                )
+                .arg(
+                    Arg::with_name("lending_market")
+                        .long("market")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Lending market address"),
+                )
+                .arg(
+                    Arg::with_name("pyth_product")
+                        .long("pyth-product")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Pyth product account: https://pyth.network/developers/consumers/accounts"),
+                )
+                .arg(
+                    Arg::with_name("pyth_price")
+                        .long("pyth-price")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Pyth price account: https://pyth.network/developers/consumers/accounts"),
+                )
+                .arg(
+                    Arg::with_name("optimal_utilization_rate")
+                        .long("optimal-utilization-rate")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("80")
+                        .help("Optimal utilization rate: [0, 100]"),
+                )
+                .arg(
+                    Arg::with_name("loan_to_value_ratio")
+                        .long("loan-to-value-ratio")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("50")
+                        .help("Target ratio of the value of borrows to deposits: [0, 100)"),
+                )
+                .arg(
+                    Arg::with_name("liquidation_bonus")
+                        .long("liquidation-bonus")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("5")
+                        .help("Bonus a liquidator gets when repaying part of an unhealthy obligation: [0, 100]"),
+                )
+                .arg(
+                    Arg::with_name("liquidation_threshold")
+                        .long("liquidation-threshold")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("55")
+                        .help("Loan to value ratio at which an obligation can be liquidated: (LTV, 100]"),
+                )
+                .arg(
+                    Arg::with_name("min_borrow_rate")
+                        .long("min-borrow-rate")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("0")
+                        .help("Min borrow APY: min <= optimal <= max"),
+                )
+                .arg(
+                    Arg::with_name("optimal_borrow_rate")
+                        .long("optimal-borrow-rate")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("4")
+                        .help("Optimal (utilization) borrow APY: min <= optimal <= max"),
+                )
+                .arg(
+                    Arg::with_name("max_borrow_rate")
+                        .long("max-borrow-rate")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("30")
+                        .help("Max borrow APY: min <= optimal <= max"),
+                )
+                .arg(
+                    Arg::with_name("borrow_fee")
+                        .long("borrow-fee")
+                        .validator(is_parsable::<f64>)
+                        .value_name("DECIMAL_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("0.00001")
+                        .help("Fee assessed on borrow, expressed as a percentage: [0, 1)"),
+                )
+                .arg(
+                    Arg::with_name("flash_loan_fee")
+                        .long("flash-loan-fee")
+                        .validator(is_parsable::<f64>)
+                        .value_name("DECIMAL_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value(".3")
+                        .help("Fee assessed for flash loans, expressed as a percentage: [0, 1)"),
+                )
+                .arg(
+                    Arg::with_name("host_fee_percentage")
+                        .long("host-fee-percentage")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .default_value("20")
+                        .help("Amount of fee going to host account: [0, 100]"),
+                )
         )
         .get_matches();
 
     let mut wallet_manager = None;
-    let config = {
+    let mut config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
             solana_cli_config::Config::load(config_file).unwrap_or_default()
         } else {
@@ -385,7 +573,7 @@ fn main() {
             let flash_loan_fee_wad = (flash_loan_fee * WAD as f64) as u64;
 
             command_add_reserve(
-                &config,
+                &mut config,
                 ui_amount,
                 ReserveConfig {
                     optimal_utilization_rate,
@@ -407,6 +595,51 @@ fn main() {
                 lending_market_owner_keypair,
                 pyth_product_pubkey,
                 pyth_price_pubkey,
+            )
+        }
+        ("update-reserve", Some(arg_matches)) => {
+            let reserve_pubkey = pubkey_of(arg_matches, "reserve").unwrap();
+            let lending_market_owner_keypair =
+                keypair_of(arg_matches, "lending_market_owner").unwrap();
+            let lending_market_pubkey = pubkey_of(arg_matches, "lending_market").unwrap();
+            let pyth_product_pubkey = pubkey_of(arg_matches, "pyth_product");
+            let pyth_price_pubkey = pubkey_of(arg_matches, "pyth_price");
+            let optimal_utilization_rate =
+                value_of(arg_matches, "optimal_utilization_rate");
+            let loan_to_value_ratio = value_of(arg_matches, "loan_to_value_ratio");
+            let liquidation_bonus = value_of(arg_matches, "liquidation_bonus");
+            let liquidation_threshold = value_of(arg_matches, "liquidation_threshold");
+            let min_borrow_rate = value_of(arg_matches, "min_borrow_rate");
+            let optimal_borrow_rate = value_of(arg_matches, "optimal_borrow_rate");
+            let max_borrow_rate = value_of(arg_matches, "max_borrow_rate");
+            let borrow_fee = value_of::<f64>(arg_matches, "borrow_fee");
+            let flash_loan_fee = value_of::<f64>(arg_matches, "flash_loan_fee");
+            let host_fee_percentage = value_of(arg_matches, "host_fee_percentage");
+
+            let borrow_fee_wad = borrow_fee.map(|fee| (fee * WAD as f64) as u64);
+            let flash_loan_fee_wad = flash_loan_fee.map(|fee| (fee * WAD as f64) as u64);
+
+            command_update_reserve(
+                &mut config,
+                PartialReserveConfig {
+                    optimal_utilization_rate,
+                    loan_to_value_ratio,
+                    liquidation_bonus,
+                    liquidation_threshold,
+                    min_borrow_rate,
+                    optimal_borrow_rate,
+                    max_borrow_rate,
+                    fees: PartialReserveFees {
+                        borrow_fee_wad,
+                        flash_loan_fee_wad,
+                        host_fee_percentage,
+                    },
+                },
+                pyth_product_pubkey,
+                pyth_price_pubkey,
+                reserve_pubkey,
+                lending_market_pubkey,
+                lending_market_owner_keypair,
             )
         }
         _ => unreachable!(),
@@ -474,7 +707,7 @@ fn command_create_lending_market(
 
 #[allow(clippy::too_many_arguments)]
 fn command_add_reserve(
-    config: &Config,
+    config: &mut Config,
     ui_amount: f64,
     reserve_config: ReserveConfig,
     source_liquidity_pubkey: Pubkey,
@@ -687,6 +920,158 @@ fn command_add_reserve(
         recent_blockhash,
     );
     send_transaction(config, transaction_3)?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments, clippy::unnecessary_unwrap)]
+fn command_update_reserve(
+    config: &mut Config,
+    reserve_config: PartialReserveConfig,
+    pyth_product_pubkey: Option<Pubkey>,
+    pyth_price_pubkey: Option<Pubkey>,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner_keypair: Keypair,
+) -> CommandResult {
+    let reserve_info = config.rpc_client.get_account(&reserve_pubkey)?;
+    let mut reserve = Reserve::unpack_from_slice(reserve_info.data.borrow())?;
+    
+    if reserve_config.optimal_utilization_rate.is_some() {
+        println!(
+            "Updating optimal_utilization_rate from {} to {}",
+            reserve.config.optimal_utilization_rate,
+            reserve_config.optimal_utilization_rate.unwrap(),
+        );
+        reserve.config.optimal_utilization_rate = reserve_config.optimal_utilization_rate.unwrap();
+    }
+
+    if reserve_config.loan_to_value_ratio.is_some() {
+        println!(
+            "Updating loan_to_value_ratio from {} to {}",
+            reserve.config.loan_to_value_ratio,
+            reserve_config.loan_to_value_ratio.unwrap(),
+        );
+        reserve.config.loan_to_value_ratio = reserve_config.loan_to_value_ratio.unwrap();
+    }
+
+    if reserve_config.liquidation_bonus.is_some() {
+        println!(
+            "Updating liquidation_bonus from {} to {}",
+            reserve.config.liquidation_bonus,
+            reserve_config.liquidation_bonus.unwrap(),
+        );
+        reserve.config.liquidation_bonus = reserve_config.liquidation_bonus.unwrap();
+    }
+
+    if reserve_config.liquidation_threshold.is_some() {
+        println!(
+            "Updating liquidation_threshold from {} to {}",
+            reserve.config.liquidation_threshold,
+            reserve_config.liquidation_threshold.unwrap(),
+        );
+        reserve.config.liquidation_threshold = reserve_config.liquidation_threshold.unwrap();
+    }
+
+    if reserve_config.min_borrow_rate.is_some() {
+        println!(
+            "Updating min_borrow_rate from {} to {}",
+            reserve.config.min_borrow_rate,
+            reserve_config.min_borrow_rate.unwrap(),
+        );
+        reserve.config.min_borrow_rate = reserve_config.min_borrow_rate.unwrap();
+    }
+
+    if reserve_config.optimal_borrow_rate.is_some() {
+        println!(
+            "Updating optimal_borrow_rate from {} to {}",
+            reserve.config.optimal_borrow_rate,
+            reserve_config.optimal_borrow_rate.unwrap(),
+        );
+        reserve.config.optimal_borrow_rate = reserve_config.optimal_borrow_rate.unwrap();
+    }
+
+    if reserve_config.max_borrow_rate.is_some() {
+        println!(
+            "Updating max_borrow_rate from {} to {}",
+            reserve.config.max_borrow_rate,
+            reserve_config.max_borrow_rate.unwrap(),
+        );
+        reserve.config.max_borrow_rate = reserve_config.max_borrow_rate.unwrap();
+    }
+
+    if reserve_config.fees.borrow_fee_wad.is_some() {
+        println!(
+            "Updating borrow_fee_wad from {} to {}",
+            reserve.config.fees.borrow_fee_wad,
+            reserve_config.fees.borrow_fee_wad.unwrap(),
+        );
+        reserve.config.fees.borrow_fee_wad = reserve_config.fees.borrow_fee_wad.unwrap();
+    }
+
+    if reserve_config.fees.flash_loan_fee_wad.is_some() {
+        println!(
+            "Updating flash_loan_fee_wad from {} to {}",
+            reserve.config.fees.flash_loan_fee_wad,
+            reserve_config.fees.flash_loan_fee_wad.unwrap(),
+        );
+        reserve.config.fees.flash_loan_fee_wad = reserve_config.fees.flash_loan_fee_wad.unwrap();
+    }
+
+    if reserve_config.fees.host_fee_percentage.is_some() {
+        println!(
+            "Updating host_fee_percentage from {} to {}",
+            reserve.config.fees.host_fee_percentage,
+            reserve_config.fees.host_fee_percentage.unwrap(),
+        );
+        reserve.config.fees.host_fee_percentage = reserve_config.fees.host_fee_percentage.unwrap();
+    }
+
+    if pyth_product_pubkey.is_some() {
+        println!(
+            "Updating pyth product pubkey from {} to {}",
+            reserve.liquidity.oracle_pubkey,
+            pyth_product_pubkey.unwrap(),
+        );
+        reserve.liquidity.oracle_pubkey = pyth_price_pubkey.unwrap();
+    }
+
+    let mut new_pyth_product_pubkey = NULL_PUBKEY;
+    if pyth_price_pubkey.is_some() {
+        println!(
+            "Updating pyth oracle pubkey from {} to {}",
+            reserve.liquidity.oracle_pubkey,
+            pyth_price_pubkey.unwrap(),
+        );
+        reserve.liquidity.oracle_pubkey = pyth_price_pubkey.unwrap();
+        new_pyth_product_pubkey = pyth_product_pubkey.unwrap();
+    }
+    
+    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    let message = Message::new_with_blockhash(
+        &[update_reserve_config(
+            config.lending_program_id,
+            reserve.config,
+            reserve_pubkey,
+            lending_market_pubkey,
+            lending_market_owner_keypair.pubkey(),
+            new_pyth_product_pubkey,
+            reserve.liquidity.oracle_pubkey,
+        )],
+        Some(&config.fee_payer.pubkey()),
+        &recent_blockhash,
+    );
+
+    check_fee_payer_balance(
+        config,
+        config.rpc_client.get_fee_for_message(&message)?,
+    )?;
+
+    let transaction = Transaction::new(
+        &vec![config.fee_payer.as_ref(), &lending_market_owner_keypair],
+        message,
+        recent_blockhash,
+    );
+    send_transaction(config, transaction)?;
     Ok(())
 }
 
