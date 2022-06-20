@@ -97,7 +97,7 @@ USDC_RESERVE_OUTPUT=$(spl-token-lending \
   --source-owner      $OWNER \
   --market            $MARKET_ADDR \
   --source            $USDC_TOKEN_ACC \
-  --amount            1.0  \
+  --amount            1000000000.0  \
   --pyth-product      6NpdXrQEpmDZ3jZKmM2rhdmkd3H6QAk23j2x8bkXcHKA \
   --pyth-price        5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7 \
   --verbose);
