@@ -310,6 +310,31 @@ pub enum LendingInstruction {
     },
 
     // 14
+    /// Combines DepositReserveLiquidity and DepositObligationCollateral
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Source liquidity token account.
+    ///                     $authority can transfer $liquidity_amount.
+    ///   1. `[writable]` Destination collateral token account.
+    ///   2. `[writable]` Reserve account.
+    ///   3. `[writable]` Reserve liquidity supply SPL Token account.
+    ///   4. `[writable]` Reserve collateral SPL Token mint.
+    ///   5. `[]` Lending market account.
+    ///   6. `[]` Derived lending market authority.
+    ///   7. `[writable]` Destination deposit reserve collateral supply SPL Token account.
+    ///   8. `[writable]` Obligation account.
+    ///   9. `[signer]` Obligation owner.
+    ///   10 `[]` Pyth price oracle account.
+    ///   11 `[signer]` User transfer authority ($authority).
+    ///   12 `[]` Clock sysvar.
+    ///   13 `[]` Token program id.
+    DepositReserveLiquidityAndObligationCollateral {
+        /// Amount of liquidity to deposit in exchange
+        liquidity_amount: u64,
+    },
+
+    // 15
     /// Updates a reserves config and a reserve price oracle pubkeys
     ///
     /// Accounts expected by this instruction:
@@ -412,6 +437,10 @@ impl LendingInstruction {
                 Self::FlashLoan { amount }
             }
             14 => {
+                let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::DepositReserveLiquidityAndObligationCollateral { liquidity_amount }
+            }
+            15 => {
                 let (optimal_utilization_rate, rest) = Self::unpack_u8(rest)?;
                 let (loan_to_value_ratio, rest) = Self::unpack_u8(rest)?;
                 let (liquidation_bonus, rest) = Self::unpack_u8(rest)?;
@@ -587,6 +616,10 @@ impl LendingInstruction {
                 buf.push(13);
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
+            Self::DepositReserveLiquidityAndObligationCollateral { liquidity_amount } => {
+                buf.push(14);
+                buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
             Self::UpdateReserveConfig {
                 config:
                     ReserveConfig {
@@ -605,7 +638,7 @@ impl LendingInstruction {
                             },
                     },
             } => {
-                buf.push(14);
+                buf.push(15);
                 buf.extend_from_slice(&optimal_utilization_rate.to_le_bytes());
                 buf.extend_from_slice(&loan_to_value_ratio.to_le_bytes());
                 buf.extend_from_slice(&liquidation_bonus.to_le_bytes());
