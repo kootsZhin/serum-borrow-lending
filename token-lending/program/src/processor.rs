@@ -1830,7 +1830,6 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
     let _pyth_price_info = next_account_info(account_info_iter)?;
-    let _switchboard_feed_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
