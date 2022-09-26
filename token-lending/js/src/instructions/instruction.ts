@@ -15,5 +15,6 @@ export enum LendingInstruction {
     LiquidateObligation = 12,
     FlashLoan = 13,
     DepositReserveLiquidityAndObligationCollateral = 14,
-    UpdateReserveConfig = 15,
+    WithdrawObligationCollateralAndRedeemReserveLiquidity = 15,
+    UpdateReserveConfig = 16,
 }
