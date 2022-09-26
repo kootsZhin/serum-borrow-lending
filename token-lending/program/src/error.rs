@@ -159,7 +159,20 @@ pub enum LendingError {
     /// Not enough liquidity after flash loan
     #[error("Not enough liquidity after flash loan")]
     NotEnoughLiquidityAfterFlashLoan,
+
     // 45
+    /// Oracle price type is invalid
+    #[error("Input oracle price type is invalid")]
+    InvalidOraclePriceType,
+    /// Oracle price status is invalid
+    #[error("Input oracle price status is invalid")]
+    InvalidOraclePriceStatus,
+    /// The slot elapsed since the last update is larger than STALE_AFTER_SLOTS_ELAPSED
+    #[error("Oracle price is stale")]
+    StaleOracle,
+    /// Oracle price cannot be negative
+    #[error("Oracle price cannot be negative")]
+    NegativeOraclePrice,
 }
 
 impl From<LendingError> for ProgramError {

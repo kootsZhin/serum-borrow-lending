@@ -4,7 +4,8 @@
 # init turbo pool with SOL and USDC
 #
 
-
+export RUST_LOG=solana_runtime::system_instruction_processor=trace,solana_runtime::message_processor=info,solana_bpf_loader=debug,solana_rbpf=debug
+export RUST_LOG=solana_rbpf=trace
 
 echo "Running mainnet deploy script...";
 
@@ -19,15 +20,15 @@ fi
 cargo build
 cargo build-bpf
 
-OWNER = "owner.json"
-PROGRAM = "lending.json"
-NETWORK = "https://solana-api.projectserum.com"
+OWNER="owner.json"
+PROGRAM="lending.json"
+NETWORK="https://api.mainnet-beta.solana.com"
 
-WSOL_ADDR = "So11111111111111111111111111111111111111112"
-USDC_ADDR = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+WSOL_ADDR="So11111111111111111111111111111111111111112"
+USDC_ADDR="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
-bold = $(tput bold)
-normal = $(tput sgr0)
+bold=$(tput bold)
+normal=$(tput sgr0)
 
 SOL_CONFIG_OUTPUT=$(solana config set --url $NETWORK --keypair owner.json); # deploying on mainnet-beta
 
@@ -44,13 +45,15 @@ MARKET_OUTPUT=$(spl-token-lending \
   --program      $PROGRAM_ID \
   --fee-payer    $OWNER \
   create-market \
-  --market-owner $MARKET_OWNER);
+  --market-owner $MARKET_OWNER \
+  --oracle FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH);
 MARKET_ADDR=$(echo "$MARKET_OUTPUT" | grep "market" | cut -d ' ' -f 4);
-
+# MARKET_ADDR='9brRZtUSHP9e3sAMV42d6gpYxkUGSKRopxZydykJH8L8'
 
 echo -e "\nCreating SOL Reserve...\n";
-WSOL_TOKEN_ACC_OUTPUT=$(spl-token create-account $WSOL_ADDR);
-WSOL_TOKEN_ACC=$(echo "$WSOL_TOKEN_ACC_OUTPUT" | grep "account" | cut -d ' ' -f 3);
+# WSOL_TOKEN_ACC_OUTPUT=$(spl-token create-account $WSOL_ADDR);
+# WSOL_TOKEN_ACC=$(echo "$WSOL_TOKEN_ACC_OUTPUT" | grep "account" | cut -d ' ' -f 3);
+WSOL_TOKEN_ACC='3ud3jwBt1sZEtMQZ4zfBS4r4yCstbUgpReTwUXSxBSkB'
 
 SOL_RESERVE_OUTPUT=$(spl-token-lending \
   --program           $PROGRAM_ID \
@@ -63,9 +66,8 @@ SOL_RESERVE_OUTPUT=$(spl-token-lending \
   --amount            0  \
   --pyth-product      ALP8SdU9oARYVLgLR7LrqMNCYBnhtnQz1cj6bwgwQmgj \
   --pyth-price        H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG \
-
   --optimal-utilization-rate 90 \
-  --loan-to-value-rate 90 \
+  --loan-to-value-ratio 90 \
   --liquidation-bonus 3 \
   --liquidation-threshold 95 \
   --min-borrow-rate 0 \
@@ -74,7 +76,6 @@ SOL_RESERVE_OUTPUT=$(spl-token-lending \
   --borrow-fee 0.1 \
   --flash-loan-fee 0.3 \
   --host-fee-percentage 20 \
-
   --verbose);
 
 SOL_RESERVE_ADDR=$(echo "$SOL_RESERVE_OUTPUT" | grep "reserve" | cut -d ' ' -f 3);
@@ -86,8 +87,9 @@ SOL_RESERVE_LIQUIDITY_FEE_RECEIVER_ADDR=$(echo "$SOL_RESERVE_OUTPUT" | grep "Add
 
 echo -e "\nCreating USDC Reserve...\n";
 
-USDC_TOKEN_ACC_OUTPUT=$(spl-token create-account $USDC_ADDR);
-USDC_TOKEN_ACC=$(echo "$USDC_TOKEN_ACC_OUTPUT" | grep "account" | cut -d ' ' -f 3);
+# USDC_TOKEN_ACC_OUTPUT=$(spl-token create-account $USDC_ADDR);
+# USDC_TOKEN_ACC=$(echo "$USDC_TOKEN_ACC_OUTPUT" | grep "account" | cut -d ' ' -f 3);
+USDC_TOKEN_ACC='Bnvbwrm957WwPyq2cYE97hSYcSz25cYr2DeQgP2M5UhP'
 
 USDC_RESERVE_OUTPUT=$(spl-token-lending \
   --program           $PROGRAM_ID \
@@ -100,9 +102,8 @@ USDC_RESERVE_OUTPUT=$(spl-token-lending \
   --amount            0  \
   --pyth-product      8GWTTbNiXdmyZREXbjsZBmCRuzdPrW55dnZGDkTRjWvb \
   --pyth-price        Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD \
-
   --optimal-utilization-rate 90 \
-  --loan-to-value-rate 90 \
+  --loan-to-value-ratio 90 \
   --liquidation-bonus 3 \
   --liquidation-threshold 95 \
   --min-borrow-rate 0 \
@@ -111,7 +112,6 @@ USDC_RESERVE_OUTPUT=$(spl-token-lending \
   --borrow-fee 0.2 \
   --flash-loan-fee 0.3 \
   --host-fee-percentage 20 \
-
   --verbose);
 
 USDC_RESERVE_ADDR=$(echo "$USDC_RESERVE_OUTPUT" | grep "reserve" | cut -d ' ' -f 3);
@@ -130,7 +130,7 @@ echo -e ""
 
 echo -e "${bold}WRAPPED_SOL_ADDR=${normal}$WSOL_ADDR";
 echo -e "${bold}WRAPPED_SOL_DECIMAL=${normal}9"
-echo -e "${bold}WRAPPED_SOL_SOURCE_ADDR=${normal}$SOURCE";
+echo -e "${bold}WRAPPED_SOL_SOURCE_ADDR=${normal}$WSOL_TOKEN_ACC";
 echo -e "${bold}WRAPPED_SOL_RESERVE_ADDR=${normal}$SOL_RESERVE_ADDR";
 echo -e "${bold}WRAPPED_SOL_COLLATERAL_MINT_ADDR=${normal}$SOL_RESERVE_COLLATERAL_MINT_ADDR";
 echo -e "${bold}WRAPPED_SOL_COLLATERAL_SUPPLY_ADDR=${normal}$SOL_RESERVE_COLLATERAL_SUPPLY_ADDR";

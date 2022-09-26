@@ -26,11 +26,11 @@ normal=$(tput sgr0)
 
 SOL_CONFIG_OUTPUT=$(solana config set --url $NETWORK --keypair owner.json); # deploying on devnet
 
-# solana airdrop 2 $MARKET_OWNER;
-# solana airdrop 2 $MARKET_OWNER;
-# solana airdrop 2 $MARKET_OWNER;
-# solana airdrop 2 $MARKET_OWNER;
-# solana airdrop 2 $MARKET_OWNER;
+solana airdrop 2 $MARKET_OWNER;
+solana airdrop 2 $MARKET_OWNER;
+solana airdrop 2 $MARKET_OWNER;
+solana airdrop 2 $MARKET_OWNER;
+solana airdrop 2 $MARKET_OWNER;
 # solana airdrop 2 $MARKET_OWNER;
 # solana airdrop 2 $MARKET_OWNER;
 # solana airdrop 2 $MARKET_OWNER;
@@ -49,7 +49,8 @@ MARKET_OUTPUT=$(spl-token-lending \
   --program      $PROGRAM_ID \
   --fee-payer    $OWNER \
   create-market \
-  --market-owner $MARKET_OWNER);
+  --market-owner $MARKET_OWNER \
+  --oracle gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s);
 MARKET_ADDR=$(echo "$MARKET_OUTPUT" | grep "market" | cut -d ' ' -f 4);
 
 
@@ -75,6 +76,16 @@ SOL_RESERVE_OUTPUT=$(spl-token-lending \
   --amount            0  \
   --pyth-product      3Mnn2fX6rQyUsyELYms1sBJyChWofzSNRoqYzvgMVz5E \
   --pyth-price        J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix \
+  --optimal-utilization-rate 90 \
+  --loan-to-value-ratio 90 \
+  --liquidation-bonus 3 \
+  --liquidation-threshold 95 \
+  --min-borrow-rate 0 \
+  --optimal-borrow-rate 10 \
+  --max-borrow-rate 150 \
+  --borrow-fee 0.1 \
+  --flash-loan-fee 0.3 \
+  --host-fee-percentage 20 \
   --verbose);
 
 SOL_RESERVE_ADDR=$(echo "$SOL_RESERVE_OUTPUT" | grep "reserve" | cut -d ' ' -f 3);
@@ -103,8 +114,18 @@ USDC_RESERVE_OUTPUT=$(spl-token-lending \
   --market            $MARKET_ADDR \
   --source            $USDC_TOKEN_ACC \
   --amount            0  \
-  --pyth-product      6NpdXrQEpmDZ3jZKmM2rhdmkd3H6QAk23j2x8bkXcHKA \
-  --pyth-price        5SSkXsEKQepHHAewytPVwdej4epN1nxgLVM84L4KXgy7 \
+  --pyth-product      3m1y5h2uv7EQL3KaJZehvAJa4yDNvgc5yAdL9KPMKwvk \
+  --pyth-price        HovQMDrbAgAYPCmHVSrezcSmkMtXSSUsLDFANExrZh2J \
+  --optimal-utilization-rate 90 \
+  --loan-to-value-ratio 90 \
+  --liquidation-bonus 3 \
+  --liquidation-threshold 95 \
+  --min-borrow-rate 0 \
+  --optimal-borrow-rate 10 \
+  --max-borrow-rate 150 \
+  --borrow-fee 0.1 \
+  --flash-loan-fee 0.3 \
+  --host-fee-percentage 20 \
   --verbose);
 
 USDC_RESERVE_ADDR=$(echo "$USDC_RESERVE_OUTPUT" | grep "reserve" | cut -d ' ' -f 3);

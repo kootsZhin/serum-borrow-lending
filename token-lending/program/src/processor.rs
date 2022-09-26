@@ -2157,7 +2157,7 @@ fn get_pyth_product_quote_currency(pyth_product: &pyth::Product) -> Result<[u8; 
 }
 
 fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
-    const STALE_AFTER_SLOTS_ELAPSED: u64 = 5;
+    const STALE_AFTER_SLOTS_ELAPSED: u64 = 240;
 
     let pyth_price_data = pyth_price_info.try_borrow_data()?;
     let pyth_price = pyth::load::<pyth::Price>(&pyth_price_data)
@@ -2165,12 +2165,12 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
 
     if pyth_price.ptype != pyth::PriceType::Price {
         msg!("Oracle price type is invalid");
-        return Err(LendingError::InvalidOracleConfig.into());
+        return Err(LendingError::InvalidOraclePriceType.into());
     }
 
     if pyth_price.agg.status != pyth::PriceStatus::Trading {
         msg!("Oracle price status is invalid");
-        return Err(LendingError::InvalidOracleConfig.into());
+        return Err(LendingError::InvalidOraclePriceStatus.into());
     }
 
     let slots_elapsed = clock
@@ -2179,12 +2179,12 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
         .ok_or(LendingError::MathOverflow)?;
     if slots_elapsed >= STALE_AFTER_SLOTS_ELAPSED {
         msg!("Oracle price is stale");
-        return Err(LendingError::InvalidOracleConfig.into());
+        return Err(LendingError::StaleOracle.into());
     }
 
     let price: u64 = pyth_price.agg.price.try_into().map_err(|_| {
         msg!("Oracle price cannot be negative");
-        LendingError::InvalidOracleConfig
+        LendingError::NegativeOraclePrice
     })?;
 
     let market_price = if pyth_price.expo >= 0 {

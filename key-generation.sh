@@ -31,4 +31,5 @@ echo -e "${bold}Program address:${normal} $PROGRAM_ID (lending.json)";
 export MARKET_OWNER
 export PROGRAM_ID
 
+echo -e ""
 echo -e "Modify static program ID in lib.rs before moving on";
