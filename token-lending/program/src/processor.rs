@@ -298,7 +298,7 @@ fn process_init_reserve(
     spl_token_init_account(TokenInitializeAccountParams {
         account: reserve_liquidity_fee_receiver_info.clone(),
         mint: reserve_liquidity_mint_info.clone(),
-        owner: lending_market_authority_info.clone(),
+        owner: lending_market_owner_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),
     })?;
